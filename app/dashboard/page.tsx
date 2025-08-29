@@ -23,6 +23,12 @@ interface Project {
   createdAt: string;
   updatedAt: string;
   isPublic: boolean;
+  user: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  permission?: 'OWNER' | 'VIEW' | 'COMMENT' | 'EDIT';
 }
 
 export default function DashboardPage() {
@@ -208,8 +214,8 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Projects */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        {/* My Projects */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-8">
           <div className="p-6 border-b border-gray-200">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold text-gray-900">Dự án của bạn</h2>
@@ -294,6 +300,71 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Shared Projects */}
+        {projects.filter(p => p.permission && p.permission !== 'OWNER').length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-semibold text-gray-900">Dự án được chia sẻ</h2>
+            </div>
+            
+            <div className="divide-y divide-gray-200">
+              {projects.filter(p => p.permission && p.permission !== 'OWNER').map((project) => (
+                <div key={project.id} className="p-6 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-2">
+                        <h3 className="text-lg font-medium text-gray-900">
+                          {project.title}
+                        </h3>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getTypeColor(project.type)}`}>
+                          {getTypeLabel(project.type)}
+                        </span>
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          project.permission === 'EDIT' ? 'bg-blue-100 text-blue-800' :
+                          project.permission === 'COMMENT' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {project.permission === 'EDIT' ? 'Có thể chỉnh sửa' :
+                           project.permission === 'COMMENT' ? 'Chỉ nhận xét' :
+                           'Chỉ xem'}
+                        </span>
+                      </div>
+                      
+                      {project.description && (
+                        <p className="text-gray-600 mb-2">{project.description}</p>
+                      )}
+                      
+                      <div className="flex items-center space-x-4 text-sm text-gray-500">
+                        <div className="flex items-center space-x-1">
+                          <Calendar className="h-4 w-4" />
+                          <span>Tạo: {new Date(project.createdAt).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <Edit3 className="h-4 w-4" />
+                          <span>Sửa: {new Date(project.updatedAt).toLocaleDateString('vi-VN')}</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <span>Bởi: {project.user.name || project.user.email}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Link
+                        href={`/uml-designer?project=${project.id}`}
+                        className="text-blue-600 hover:text-blue-700 p-2 rounded-lg hover:bg-blue-50 transition-colors"
+                        title={project.permission === 'EDIT' ? 'Chỉnh sửa' : 'Xem'}
+                      >
+                        {project.permission === 'EDIT' ? <Edit3 className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

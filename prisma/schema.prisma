@@ -46,6 +46,12 @@ model User {
   accounts      Account[]
   sessions      Session[]
   projects      Project[]
+  // Collaboration fields
+  sharedProjects    ProjectShare[]
+  projectComments  ProjectComment[]
+  projectActivities ProjectActivity[]
+  collaborationSessions CollaborationSession[]
+  notifications    Notification[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -69,4 +75,101 @@ model Project {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   isPublic    Boolean  @default(false)
+  
+  // Collaboration fields
+  shares      ProjectShare[]
+  comments    ProjectComment[]
+  activities  ProjectActivity[]
+  collaborationSessions CollaborationSession[]
+  // Real-time collaboration
+  lastEditAt  DateTime @default(now())
+  lastEditBy  String?
+  version     Int      @default(1)
+  // Notifications
+  notifications Notification[]
+}
+
+// Permission levels: OWNER, VIEW, COMMENT, EDIT
+enum PermissionLevel {
+  OWNER
+  VIEW
+  COMMENT
+  EDIT
+}
+
+// Project sharing and permissions
+model ProjectShare {
+  id        String         @id @default(cuid())
+  projectId String
+  userId    String
+  permission PermissionLevel
+  invitedBy String
+  invitedAt DateTime       @default(now())
+  acceptedAt DateTime?
+  isActive  Boolean        @default(true)
+  
+  project   Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([projectId, userId])
+}
+
+// Comments on projects
+model ProjectComment {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  content   String
+  parentId  String?  // For nested comments
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    ProjectComment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   ProjectComment[] @relation("CommentReplies")
+}
+
+// Activity tracking for collaboration
+model ProjectActivity {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  action    String   // "edit", "comment", "share", "view"
+  details   String?  // JSON string with additional info
+  createdAt DateTime @default(now())
+  
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Real-time collaboration sessions
+model CollaborationSession {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  sessionId String   @unique
+  joinedAt  DateTime @default(now())
+  lastSeen  DateTime @default(now())
+  isActive  Boolean  @default(true)
+  
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// User notifications
+model Notification {
+  id            String   @id @default(cuid())
+  userId        String
+  type          String   // "share", "comment", "edit", "permission", "system"
+  title         String
+  message       String
+  projectId     String?
+  projectTitle  String?
+  isRead        Boolean  @default(false)
+  actionUrl     String?
+  createdAt     DateTime @default(now())
+  
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project       Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }

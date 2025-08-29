@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Shapes } from 'lucide-react';
 import AuthButton from './AuthButton';
+import NotificationBell from './NotificationBell';
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -40,6 +41,7 @@ export default function Navigation() {
           </nav>
 
           <div className="flex items-center space-x-4">
+            <NotificationBell />
             <AuthButton />
             <Link 
               href="/uml-designer"

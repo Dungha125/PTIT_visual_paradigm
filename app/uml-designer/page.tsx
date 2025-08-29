@@ -3,6 +3,9 @@ import React, { useCallback, useState, useRef, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import SaveProjectModal from '../components/SaveProjectModal';
+import ShareProjectModal from '../components/ShareProjectModal';
+import CollaborationPanel from '../components/CollaborationPanel';
+import { useCollaboration } from '@/lib/hooks/useCollaboration';
 import { 
   Square, 
   Circle, 
@@ -26,7 +29,8 @@ import {
   Move,
   MousePointer,
   Palette as PaletteIcon,
-  Shapes
+  Shapes,
+  Share2
 } from 'lucide-react';
 // ...existing code...
 
@@ -1435,6 +1439,38 @@ export default function UMLDiagramDesigner() {
   // Project management states
   const [currentProject, setCurrentProject] = useState<any>(null);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showCollaborationPanel, setShowCollaborationPanel] = useState(false); // Mặc định ẩn
+  
+  // Collaboration hook - temporarily disabled due to import issues
+  // const { 
+  //   activeUsers, 
+  //   comments, 
+  //   isConnected, 
+  //   joinProject, 
+  //   leaveProject, 
+  //   addComment 
+  // } = useCollaboration({
+  //   projectId: currentProject?.id || '',
+  //   onProjectUpdate: (data: any) => {
+  //     // Handle project updates from other users
+  //     console.log('Project updated by other user:', data);
+  //   },
+  //   onUserJoined: (userId: string) => {
+  //     console.log('User joined project:', userId);
+  //   },
+  //   onUserLeft: (userId: string) => {
+  //     console.log('User left project:', userId);
+  //   }
+  // });
+  
+  // Temporary mock data for collaboration
+  const activeUsers: any[] = [];
+  const comments: any[] = [];
+  const isConnected = false;
+  const joinProject = (id: string) => console.log('Join project:', id);
+  const leaveProject = (id: string) => console.log('Leave project:', id);
+  const addComment = (content: string) => console.log('Add comment:', content);
   const [saveLoading, setSaveLoading] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
 
@@ -1800,6 +1836,16 @@ export default function UMLDiagramDesigner() {
     ) || null;
   }, [diagramState.nodes, diagramState.selectedNodeIds]);
 
+  // Collaboration management
+  useEffect(() => {
+    if (currentProject && isConnected) {
+      joinProject(currentProject.id);
+      return () => {
+        leaveProject(currentProject.id);
+      };
+    }
+  }, [currentProject, isConnected, joinProject, leaveProject]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1818,17 +1864,20 @@ export default function UMLDiagramDesigner() {
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
         e.preventDefault();
         handleCopy();
+      } else if (e.key === 'Escape' && showCollaborationPanel) {
+        e.preventDefault();
+        setShowCollaborationPanel(false);
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [handleDelete, handleUndo, handleRedo, handleCopy]);
+  }, [handleDelete, handleUndo, handleRedo, handleCopy, showCollaborationPanel]);
 
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4 flex justify-between items-center shadow-sm">
+      <div className="bg-white border-b border-gray-200 p-4 flex justify-between items-center shadow-sm z-40 relative">
         <div className="flex items-center gap-4">
           <div className="flex items-center space-x-2">
             <Shapes className="h-8 w-8 text-blue-600" />
@@ -1914,6 +1963,24 @@ export default function UMLDiagramDesigner() {
             </button>
           )}
           
+          {/* Divider */}
+          <div className="border-l border-gray-300 mx-2 h-6"></div>
+          
+          {/* Share Project Button */}
+          {session?.user && currentProject && (
+            <button 
+              onClick={() => setShowShareModal(true)}
+              className="p-2 hover:bg-gray-100 rounded-md transition-colors" 
+              title="Chia sẻ dự án"
+              type="button"
+            >
+              <Share2 size={20} />
+            </button>
+          )}
+          
+          {/* Divider */}
+          <div className="border-l border-gray-300 mx-2 h-6"></div>
+          
           {/* Auto-save Indicator */}
           {currentProject && session?.user && (
             <div className="flex items-center space-x-1">
@@ -1931,6 +1998,67 @@ export default function UMLDiagramDesigner() {
               </span>
             </div>
           )}
+          
+          {/* Divider */}
+          <div className="border-l border-gray-300 mx-2 h-6"></div>
+          
+          {/* Collaboration Status - Compact */}
+          {currentProject && (
+            <div className="flex items-center space-x-2 text-xs">
+              {/* Online Status */}
+              <span className={`px-2 py-1 rounded-full ${isConnected ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                {isConnected ? '🟢 Online' : '🔴 Offline'}
+              </span>
+              
+              {/* Active Users Count */}
+              {activeUsers.length > 0 && (
+                <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                  👥 {activeUsers.length}
+                </span>
+              )}
+              
+              {/* Comments Count */}
+              {comments.length > 0 && (
+                <span className="px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                  💬 {comments.length}
+                </span>
+              )}
+              
+              {/* Warning for Multiple Users */}
+              {activeUsers.length > 1 && (
+                <span className="px-2 py-1 rounded-full bg-orange-100 text-orange-700">
+                  ⚠️ {activeUsers.length - 1} người khác
+                </span>
+              )}
+              
+              {/* Toggle Collaboration Panel */}
+              <button
+                onClick={() => setShowCollaborationPanel(!showCollaborationPanel)}
+                className={`px-2 py-1 rounded-full transition-colors ${
+                  showCollaborationPanel 
+                    ? 'bg-blue-200 text-blue-800 hover:bg-blue-300' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+                title={showCollaborationPanel ? 'Ẩn panel collaboration (Esc)' : 'Hiện panel collaboration'}
+              >
+                {showCollaborationPanel ? '👁️' : '👁️‍🗨️'}
+              </button>
+              
+              {/* Close Button (when panel is open) */}
+              {showCollaborationPanel && (
+                <button
+                  onClick={() => setShowCollaborationPanel(false)}
+                  className="px-2 py-1 rounded-full bg-red-100 text-red-700 hover:bg-red-200 transition-colors"
+                  title="Đóng panel collaboration"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          )}
+          
+          {/* Divider */}
+          <div className="border-l border-gray-300 mx-2 h-6"></div>
           
           <button 
             onClick={() => alert('PNG export would use html2canvas')} 
@@ -1982,6 +2110,15 @@ export default function UMLDiagramDesigner() {
           onDuplicateNode={handleDuplicateNode}
           onAutoSizeNode={handleAutoSizeNode}
         />
+        
+        {/* Collaboration Panel */}
+        {currentProject && showCollaborationPanel && (
+          <CollaborationPanel
+            projectId={currentProject.id}
+            isOpen={showCollaborationPanel}
+            onClose={() => setShowCollaborationPanel(false)}
+          />
+        )}
       </div>
 
       {/* Footer */}
@@ -2026,6 +2163,11 @@ export default function UMLDiagramDesigner() {
           <span>Zoom: {Math.round(zoom * 100)}%</span>
           <span>Grid: On</span>
           <span className="text-xs text-blue-600 font-medium">Loại hiện tại: {selectedConnectionType}</span>
+          {currentProject && (
+            <span className={`text-xs font-medium ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
+              {isConnected ? '🟢 Online' : '🔴 Offline'}
+            </span>
+          )}
         </div>
       </div>
 
@@ -2041,6 +2183,16 @@ export default function UMLDiagramDesigner() {
         } : undefined}
         loading={saveLoading}
       />
+      
+      {/* Share Project Modal */}
+      {currentProject && (
+        <ShareProjectModal
+          isOpen={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          projectId={currentProject.id}
+          projectTitle={currentProject.title}
+        />
+      )}
     </div>
   );
 }

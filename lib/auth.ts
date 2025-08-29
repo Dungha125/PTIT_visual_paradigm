@@ -17,17 +17,11 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    session: async ({ session, token }) => {
-      if (session?.user && token?.sub) {
-        session.user.id = token.sub;
+    session: async ({ session, user }) => {
+      if (session?.user) {
+        session.user.id = user.id;
       }
       return session;
-    },
-    jwt: async ({ user, token }) => {
-      if (user) {
-        token.uid = user.id;
-      }
-      return token;
     },
     redirect: async ({ url, baseUrl }) => {
       // Redirect về dashboard sau khi đăng nhập thành công
@@ -38,6 +32,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
   session: {
-    strategy: "jwt",
+    strategy: "database",
   },
 };
